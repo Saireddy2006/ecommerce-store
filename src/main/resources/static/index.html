@@ -34,6 +34,18 @@
     </style>
 </head>
 <body>
+<div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc;">
+    <h2>Login</h2>
+
+    <input type="text" id="username" placeholder="Enter username" />
+    <input type="password" id="password" placeholder="Enter password" />
+
+    <button onclick="login()">Login</button>
+    <button onclick="logout()">Logout</button>
+
+    <p id="loginStatus">Not logged in</p>
+</div>
+
 <h1>🛒 E-Commerce Store</h1>
 
 <!-- Edit Modal -->
@@ -84,9 +96,61 @@
 <button class="cart-toggle" onclick="toggleCart()">🛒 <span id="cart-badge">0</span></button>
 
 <script>
+    let currentUser = null;
+    let currentPass = null;
+    let currentRole = null;
 
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    let cart = [];
     let allProducts = [];
+
+    function login() {
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        if (username === "admin" && password === "admin123") {
+            currentUser = username;
+            currentPass = password;
+            currentRole = "ADMIN";
+            document.getElementById("loginStatus").innerText = "Logged in as ADMIN";
+        } else if (username === "user" && password === "user123") {
+            currentUser = username;
+            currentPass = password;
+            currentRole = "USER";
+            document.getElementById("loginStatus").innerText = "Logged in as USER";
+        } else {
+            currentUser = null;
+            currentPass = null;
+            currentRole = null;
+            document.getElementById("loginStatus").innerText = "Invalid username or password";
+        }
+
+        renderProducts(allProducts);
+    }
+
+    function logout() {
+        currentUser = null;
+        currentPass = null;
+        currentRole = null;
+        document.getElementById("loginStatus").innerText = "Not logged in";
+        renderProducts(allProducts);
+    }
+
+    function getAuthHeader() {
+        if (!currentUser || !currentPass) {
+            return {
+                "Content-Type": "application/json"
+            };
+        }
+
+        return {
+            "Authorization": "Basic " + btoa(currentUser + ":" + currentPass),
+            "Content-Type": "application/json"
+        };
+    }
+
+    function isAdmin() {
+        return currentRole === "ADMIN";
+    }
 
     async function loadOrders() {
         try {
@@ -105,43 +169,51 @@
                 div.className = 'order-card';
                 div.innerHTML =
                     '<strong>Order #' + order.id + '</strong> - ' + order.customerName + '<br>' +
-                    'Qty: ' + order.quantity + ' | Total: $' + order.totalPrice.toFixed(2);
+                    'Qty: ' + order.quantity + ' | Total: $' + Number(order.totalPrice).toFixed(2);
                 ordersDiv.appendChild(div);
             });
         } catch (error) {
             console.error('Could not load orders:', error);
         }
     }
-        function renderProducts(list) {
+
+    function renderProducts(list) {
         const productsDiv = document.getElementById('products');
         productsDiv.innerHTML = '';
 
         list.forEach(product => {
             const card = document.createElement('div');
             card.className = 'product-card';
+
+            let adminButtons = '';
+            if (isAdmin()) {
+                adminButtons =
+                    '<button class="edit-btn" onclick="openEdit(' + product.id + ', \'' + product.name.replace(/'/g, "\\'") + '\', ' + product.price + ', ' + product.stock + ')">Edit</button>' +
+                    '<button class="delete-btn" onclick="deleteProduct(' + product.id + ')">Delete</button>';
+            }
+
             card.innerHTML =
                 '<h2 class="product-name">' + product.name + '</h2>' +
-                '<div class="product-price">$' + product.price.toFixed(2) + '</div>' +
+                '<div class="product-price">$' + Number(product.price).toFixed(2) + '</div>' +
                 '<div class="product-stock">' + product.stock + ' in stock</div><br>' +
-                '<button onclick="addToCart(' + product.id + ', \'' + product.name + '\', ' + product.price + ')">Add to Cart</button>' +
-                '<button class="edit-btn" onclick="openEdit(' + product.id + ', \'' + product.name + '\', ' + product.price + ', ' + product.stock + ')">Edit</button>' +
-                '<button class="delete-btn" onclick="deleteProduct(' + product.id + ')">Delete</button>';
+                '<button onclick="addToCart(' + product.id + ', \'' + product.name.replace(/'/g, "\\'") + '\', ' + product.price + ')">Add to Cart</button> ' +
+                adminButtons;
+
             productsDiv.appendChild(card);
         });
     }
 
     function filterProducts() {
         const term = document.getElementById('search-input').value.trim().toLowerCase();
-        const filtered = allProducts.filter(p =>
-            p.name.toLowerCase().includes(term)
-        );
+        const filtered = allProducts.filter(p => p.name.toLowerCase().includes(term));
         renderProducts(filtered);
     }
 
-        async function loadProducts() {
+    async function loadProducts() {
         try {
             const response = await fetch('http://localhost:8080/api/products');
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+
             const products = await response.json();
 
             const productsDiv = document.getElementById('products');
@@ -152,20 +224,21 @@
             errorDiv.style.display = 'none';
             productsDiv.style.display = 'grid';
 
-            // save full list for search
             allProducts = products;
-
-            // draw cards
             renderProducts(allProducts);
         } catch (error) {
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('error').innerHTML = `Error: ${error.message}`;
+            document.getElementById('error').innerHTML = 'Error: ' + error.message;
             document.getElementById('error').style.display = 'block';
         }
     }
 
-
     function openEdit(id, name, price, stock) {
+        if (!isAdmin()) {
+            alert('Only ADMIN can edit products');
+            return;
+        }
+
         document.getElementById('edit-id').value = id;
         document.getElementById('edit-name').value = name;
         document.getElementById('edit-price').value = price;
@@ -178,37 +251,81 @@
     }
 
     async function saveEdit() {
+        if (!isAdmin()) {
+            alert('Only ADMIN can update products');
+            return;
+        }
+
         const id = document.getElementById('edit-id').value;
         const updated = {
-            name: document.getElementById('edit-name').value,
+            name: document.getElementById('edit-name').value.trim(),
             price: parseFloat(document.getElementById('edit-price').value),
             stock: parseInt(document.getElementById('edit-stock').value)
         };
-        await fetch('http://localhost:8080/api/products/' + id, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updated)
-        });
-        closeModal();
-        loadProducts();
+
+        try {
+            const response = await fetch('http://localhost:8080/api/products/' + id, {
+                method: 'PUT',
+                headers: getAuthHeader(),
+                body: JSON.stringify(updated)
+            });
+
+            if (response.ok) {
+                alert('Product updated successfully');
+                closeModal();
+                loadProducts();
+            } else if (response.status === 401) {
+                alert('401 Unauthorized - login failed');
+            } else if (response.status === 403) {
+                alert('403 Forbidden - only ADMIN can update');
+            } else {
+                alert('Update failed with status: ' + response.status);
+            }
+        } catch (error) {
+            alert('Update failed: ' + error.message);
+        }
     }
 
     async function deleteProduct(id) {
+        if (!isAdmin()) {
+            alert('Only ADMIN can delete products');
+            return;
+        }
+
         if (!confirm('Are you sure you want to delete this product?')) return;
-        await fetch('http://localhost:8080/api/products/' + id, { method: 'DELETE' });
-        loadProducts();
+
+        try {
+            const response = await fetch('http://localhost:8080/api/products/' + id, {
+                method: 'DELETE',
+                headers: getAuthHeader()
+            });
+
+            if (response.ok) {
+                alert('Product deleted successfully');
+                loadProducts();
+            } else if (response.status === 401) {
+                alert('401 Unauthorized - login failed');
+            } else if (response.status === 403) {
+                alert('403 Forbidden - only ADMIN can delete');
+            } else {
+                alert('Delete failed with status: ' + response.status);
+            }
+        } catch (error) {
+            alert('Delete failed: ' + error.message);
+        }
     }
 
     function addToCart(id, name, price) {
         const existingItem = cart.find(item => item.id === id);
+
         if (existingItem) {
             existingItem.quantity += 1;
         } else {
-            cart.push({id, name, price, quantity: 1});
+            cart.push({ id, name, price, quantity: 1 });
         }
-        localStorage.setItem('cart', JSON.stringify(cart));
+
         updateCartUI();
-        alert(`${name} added to cart!`);
+        alert(name + ' added to cart!');
     }
 
     function toggleCart() {
@@ -247,15 +364,32 @@
     }
 
     function removeFromCart(id) {
-        cart = cart.filter(item => item.id !== id);
-        localStorage.setItem('cart', JSON.stringify(cart));
+        const item = cart.find(item => item.id === id);
+
+        if (!item) return;
+
+        if (item.quantity > 1) {
+            item.quantity -= 1;
+        } else {
+            cart = cart.filter(item => item.id !== id);
+        }
+
         updateCartUI();
     }
 
     async function checkout() {
         const customerName = document.getElementById('customer-name').value.trim();
-        if (!customerName) { alert('Please enter your name!'); return; }
-        if (cart.length === 0) { alert('Your cart is empty!'); return; }
+
+        if (!customerName) {
+            alert('Please enter your name!');
+            return;
+        }
+
+        if (cart.length === 0) {
+            alert('Your cart is empty!');
+            return;
+        }
+
         try {
             for (const item of cart) {
                 await fetch('http://localhost:8080/api/orders', {
@@ -269,25 +403,29 @@
                     })
                 });
             }
+
             const msg = document.getElementById('success-msg');
             msg.innerHTML = '🎉 Order placed! Thank you, ' + customerName + '!';
             msg.style.display = 'block';
+
             cart = [];
-            localStorage.setItem('cart', JSON.stringify(cart));
             updateCartUI();
             toggleCart();
             loadOrders();
-            setTimeout(function() { msg.style.display = 'none'; }, 4000);
+
+            setTimeout(function() {
+                msg.style.display = 'none';
+            }, 4000);
         } catch (error) {
             alert('Order failed: ' + error.message);
         }
     }
 
-    // Load on start
     loadProducts();
     updateCartUI();
     loadOrders();
 </script>
+
 
 </body>
 </html>
