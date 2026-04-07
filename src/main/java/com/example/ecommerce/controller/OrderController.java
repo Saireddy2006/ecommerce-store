@@ -1,10 +1,12 @@
 package com.example.ecommerce.controller;
 
 import com.example.ecommerce.model.Order;
-import com.example.ecommerce.repository.OrderRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.ecommerce.service.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+
+
 import java.util.List;
 
 @RestController
@@ -12,18 +14,21 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class OrderController {
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderService orderService;
+
+    public OrderController(OrderService orderService) {
+        this.orderService = orderService;
+    }
 
     @GetMapping
     public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+        return orderService.getAllOrders();
     }
 
     @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        Order savedOrder = orderRepository.save(order);
-        System.out.println("New order: #" + savedOrder.getId() + " for " + savedOrder.getCustomerName());
+    public ResponseEntity<Order> createOrder(@Valid @RequestBody Order order) {
+        Order savedOrder = orderService.createOrder(order);
         return ResponseEntity.ok(savedOrder);
     }
+
 }
