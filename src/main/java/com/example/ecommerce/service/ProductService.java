@@ -1,11 +1,11 @@
 package com.example.ecommerce.service;
 
+import com.example.ecommerce.exception.ResourceNotFoundException;
 import com.example.ecommerce.model.Product;
 import com.example.ecommerce.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ProductService {
@@ -20,28 +20,25 @@ public class ProductService {
         return productRepository.findAll();
     }
 
-    public Optional<Product> getProductById(Long id) {
-        return productRepository.findById(id);
+    public Product getProductById(Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
     }
 
     public Product createProduct(Product product) {
         return productRepository.save(product);
     }
 
-    public Optional<Product> updateProduct(Long id, Product updatedProduct) {
-        return productRepository.findById(id).map(product -> {
-            product.setName(updatedProduct.getName());
-            product.setPrice(updatedProduct.getPrice());
-            product.setStock(updatedProduct.getStock());
-            return productRepository.save(product);
-        });
+    public Product updateProduct(Long id, Product updatedProduct) {
+        Product product = getProductById(id);
+        product.setName(updatedProduct.getName());
+        product.setPrice(updatedProduct.getPrice());
+        product.setStock(updatedProduct.getStock());
+        return productRepository.save(product);
     }
 
-    public boolean deleteProduct(Long id) {
-        if (productRepository.existsById(id)) {
-            productRepository.deleteById(id);
-            return true;
-        }
-        return false;
+    public void deleteProduct(Long id) {
+        Product product = getProductById(id);
+        productRepository.delete(product);
     }
 }

@@ -2,10 +2,9 @@ package com.example.ecommerce.controller;
 
 import com.example.ecommerce.model.Product;
 import com.example.ecommerce.service.ProductService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
-
 
 import java.util.List;
 
@@ -32,9 +31,7 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        return productService.getProductById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(productService.getProductById(id));
     }
 
     @PostMapping
@@ -45,17 +42,13 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Product> updateProduct(@PathVariable Long id, @Valid @RequestBody Product updatedProduct) {
-        return productService.updateProduct(id, updatedProduct)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Product updated = productService.updateProduct(id, updatedProduct);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        boolean deleted = productService.deleteProduct(id);
-        if (deleted) {
-            return ResponseEntity.ok().build();
-        }
-        return ResponseEntity.notFound().build();
+        productService.deleteProduct(id);
+        return ResponseEntity.ok().build();
     }
 }

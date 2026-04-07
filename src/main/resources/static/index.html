@@ -743,6 +743,7 @@
         updateCartUI();
     }
 
+
     async function checkout() {
         const customerName = document.getElementById('customer-name').value.trim();
 
@@ -758,7 +759,7 @@
 
         try {
             for (const item of cart) {
-                await fetch('http://localhost:8080/api/orders', {
+                const response = await fetch('http://localhost:8080/api/orders', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -768,6 +769,14 @@
                         totalPrice: item.price * item.quantity
                     })
                 });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    const errorMessage = errorData.error || 'Order failed';
+                    showMessage(errorMessage, false);
+                    loadProducts();
+                    return;
+                }
             }
 
             cart = [];
@@ -775,6 +784,7 @@
             updateCartUI();
             toggleCart();
             loadOrders();
+            loadProducts();
             showMessage('🎉 Order placed successfully for ' + customerName + '!');
         } catch (error) {
             showMessage('Order failed: ' + error.message, false);
