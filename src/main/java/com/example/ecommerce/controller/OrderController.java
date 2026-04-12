@@ -1,11 +1,11 @@
 package com.example.ecommerce.controller;
 
-import com.example.ecommerce.model.Order;
+import com.example.ecommerce.dto.CreateOrderRequestDto;
+import com.example.ecommerce.dto.OrderResponseDto;
 import com.example.ecommerce.service.OrderService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
-
 
 import java.util.List;
 
@@ -21,14 +21,13 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<Order> getAllOrders() {
+    public List<OrderResponseDto> getAllOrders() {
         return orderService.getAllOrders();
     }
 
     @PostMapping
-    public ResponseEntity<Order> createOrder(@Valid @RequestBody Order order) {
-        Order savedOrder = orderService.createOrder(order);
+    public ResponseEntity<OrderResponseDto> createOrder(@Valid @RequestBody CreateOrderRequestDto request) {
+        OrderResponseDto savedOrder = orderService.createOrder(request);
         return ResponseEntity.ok(savedOrder);
     }
-
 }

@@ -5,7 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
+import java.math.BigDecimal;
+
 @Entity
+@Table(name = "products")
 public class Product {
 
     @Id
@@ -16,7 +19,7 @@ public class Product {
     private String name;
 
     @Positive(message = "Price must be greater than 0")
-    private double price;
+    private BigDecimal price;
 
     @PositiveOrZero(message = "Stock must be 0 or greater")
     private int stock;
@@ -24,7 +27,7 @@ public class Product {
     public Product() {
     }
 
-    public Product(String name, double price, int stock) {
+    public Product(String name, BigDecimal price, int stock) {
         this.name = name;
         this.price = price;
         this.stock = stock;
@@ -46,11 +49,11 @@ public class Product {
         this.name = name;
     }
 
-    public double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(double price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 

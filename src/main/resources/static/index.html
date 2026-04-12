@@ -482,9 +482,23 @@
             orders.forEach(function(order) {
                 const div = document.createElement('div');
                 div.className = 'order-card';
+
+                // Calculate total items in order
+                const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+                // Build items list
+                const itemsHTML = order.items.map(item =>
+                    '<div style="margin-left: 10px; font-size: 0.9rem;">' +
+                    '• ' + item.productName + ' x' + item.quantity + ' = $' + Number(item.lineTotal).toFixed(2) +
+                    '</div>'
+                ).join('');
+
                 div.innerHTML =
                     '<strong>Order #' + order.id + '</strong> - ' + order.customerName + '<br>' +
-                    'Qty: ' + order.quantity + ' | Total: $' + Number(order.totalPrice).toFixed(2);
+                    '<span style="color: #666; font-size: 0.9rem;">Status: ' + order.orderStatus + '</span><br>' +
+                    '<span style="color: #666; font-size: 0.9rem;">Items: ' + totalItems + '</span><br>' +
+                    itemsHTML +
+                    '<div style="margin-top: 8px; font-weight: bold; color: #007bff;">Total: $' + Number(order.totalAmount).toFixed(2) + '</div>';
                 ordersDiv.appendChild(div);
             });
         } catch (error) {
@@ -743,7 +757,6 @@
         updateCartUI();
     }
 
-
     async function checkout() {
         const customerName = document.getElementById('customer-name').value.trim();
 
@@ -758,27 +771,30 @@
         }
 
         try {
-            for (const item of cart) {
-                const response = await fetch('http://localhost:8080/api/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        customerName: customerName,
-                        productId: item.id,
-                        quantity: item.quantity,
-                        totalPrice: item.price * item.quantity
-                    })
-                });
+            // Build request body with new format: items array instead of single product
+            const requestBody = {
+                customerName: customerName,
+                items: cart.map(item => ({
+                    productId: item.id,
+                    quantity: item.quantity
+                }))
+            };
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    const errorMessage = errorData.error || 'Order failed';
-                    showMessage(errorMessage, false);
-                    loadProducts();
-                    return;
-                }
+            const response = await fetch('http://localhost:8080/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                const errorMessage = errorData.error || 'Order failed';
+                showMessage(errorMessage, false);
+                loadProducts();
+                return;
             }
 
+            // Clear cart and refresh UI
             cart = [];
             document.getElementById('customer-name').value = '';
             updateCartUI();
@@ -790,6 +806,7 @@
             showMessage('Order failed: ' + error.message, false);
         }
     }
+
 
     updateAdminUI();
     loadProducts();

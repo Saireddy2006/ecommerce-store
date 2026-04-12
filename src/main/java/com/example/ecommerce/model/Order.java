@@ -2,8 +2,12 @@ package com.example.ecommerce.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
@@ -14,33 +18,70 @@ public class Order {
     private Long id;
 
     @NotBlank(message = "Customer name is required")
+    @Column(name = "customer_name", nullable = false)
     private String customerName;
 
-    @NotNull(message = "Product ID is required")
-    private Long productId;
+    @Column(name = "order_status", nullable = false)
+    private String orderStatus = "PLACED";
 
-    @Positive(message = "Quantity must be greater than 0")
-    private int quantity;
+    @Column(name = "payment_status", nullable = false)
+    private String paymentStatus = "PENDING";
 
-    @Positive(message = "Total price must be greater than 0")
-    private double totalPrice;
+    @Column(name = "shipping_status", nullable = false)
+    private String shippingStatus = "PENDING";
+
+    @PositiveOrZero
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal subtotal = BigDecimal.ZERO;
+
+    @PositiveOrZero
+    @Column(name = "shipping_fee", nullable = false, precision = 10, scale = 2)
+    private BigDecimal shippingFee = BigDecimal.ZERO;
+
+    @PositiveOrZero
+    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalAmount = BigDecimal.ZERO;
+
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
 
     public Order() {
     }
 
-    public Order(String customerName, Long productId, int quantity, double totalPrice) {
+    public Order(String customerName) {
         this.customerName = customerName;
-        this.productId = productId;
-        this.quantity = quantity;
-        this.totalPrice = totalPrice;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        OffsetDateTime now = OffsetDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    public void addItem(OrderItem item) {
+        items.add(item);
+        item.setOrder(this);
+    }
+
+    public void removeItem(OrderItem item) {
+        items.remove(item);
+        item.setOrder(null);
     }
 
     public Long getId() {
         return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getCustomerName() {
@@ -51,27 +92,67 @@ public class Order {
         this.customerName = customerName;
     }
 
-    public Long getProductId() {
-        return productId;
+    public String getOrderStatus() {
+        return orderStatus;
     }
 
-    public void setProductId(Long productId) {
-        this.productId = productId;
+    public void setOrderStatus(String orderStatus) {
+        this.orderStatus = orderStatus;
     }
 
-    public int getQuantity() {
-        return quantity;
+    public String getPaymentStatus() {
+        return paymentStatus;
     }
 
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
+    public void setPaymentStatus(String paymentStatus) {
+        this.paymentStatus = paymentStatus;
     }
 
-    public double getTotalPrice() {
-        return totalPrice;
+    public String getShippingStatus() {
+        return shippingStatus;
     }
 
-    public void setTotalPrice(double totalPrice) {
-        this.totalPrice = totalPrice;
+    public void setShippingStatus(String shippingStatus) {
+        this.shippingStatus = shippingStatus;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(BigDecimal subtotal) {
+        this.subtotal = subtotal;
+    }
+
+    public BigDecimal getShippingFee() {
+        return shippingFee;
+    }
+
+    public void setShippingFee(BigDecimal shippingFee) {
+        this.shippingFee = shippingFee;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public List<OrderItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItem> items) {
+        this.items = items;
     }
 }
