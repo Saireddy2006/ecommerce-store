@@ -794,13 +794,19 @@
                 return;
             }
 
+            const orderData = await response.json();
+            console.log('Order created:', orderData);
+
             // Clear cart and refresh UI
             cart = [];
             document.getElementById('customer-name').value = '';
             updateCartUI();
             toggleCart();
-            loadOrders();
-            loadProducts();
+
+            // Refresh orders and products after successful order
+            await loadOrders();
+            await loadProducts();
+
             showMessage('🎉 Order placed successfully for ' + customerName + '!');
         } catch (error) {
             showMessage('Order failed: ' + error.message, false);

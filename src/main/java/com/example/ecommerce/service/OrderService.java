@@ -42,6 +42,7 @@ public class OrderService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
+        // First pass: validate stock availability
         for (CreateOrderItemDto requestItem : request.items()) {
             Product product = productRepository.findById(requestItem.productId())
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -55,10 +56,20 @@ public class OrderService {
                                 ", Requested: " + requestItem.quantity()
                 );
             }
+        }
+
+        // Second pass: create order items and reduce stock
+        for (CreateOrderItemDto requestItem : request.items()) {
+            // Fetch fresh product from database
+            Product product = productRepository.findById(requestItem.productId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Product not found with id: " + requestItem.productId()
+                    ));
 
             BigDecimal unitPrice = product.getPrice();
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(requestItem.quantity()));
 
+            // Create order item
             OrderItem item = new OrderItem();
             item.setProduct(product);
             item.setProductName(product.getName());
@@ -68,8 +79,14 @@ public class OrderService {
 
             order.addItem(item);
 
-            product.setStock(product.getStock() - requestItem.quantity());
-            productRepository.save(product);
+            // Reduce stock and save
+            int newStock = product.getStock() - requestItem.quantity();
+            product.setStock(newStock);
+            Product updatedProduct = productRepository.save(product);
+
+            System.out.println("Product: " + updatedProduct.getName() +
+                             " - Old stock: " + (newStock + requestItem.quantity()) +
+                             " → New stock: " + newStock);
 
             subtotal = subtotal.add(lineTotal);
         }
@@ -79,7 +96,8 @@ public class OrderService {
         order.setTotalAmount(subtotal);
 
         Order savedOrder = orderRepository.save(order);
-        System.out.println("New order: #" + savedOrder.getId() + " for " + savedOrder.getCustomerName());
+        System.out.println("New order: #" + savedOrder.getId() + " for " + savedOrder.getCustomerName() +
+                         " - Total: $" + savedOrder.getTotalAmount());
 
         return mapToResponseDto(savedOrder);
     }
